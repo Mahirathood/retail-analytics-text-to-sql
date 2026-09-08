@@ -1,0 +1,26 @@
+id,difficulty,question
+1,Easy,How many orders are there?
+2,Easy,How many customers are there?
+3,Easy,How many products are there?
+4,Easy,What is the total revenue?
+5,Easy,Which payment type is used most often?
+6,Easy,What is the average order value?
+7,Easy,Which state has the most customers?
+8,Easy,How many orders were delivered?
+9,Medium,What are the top 10 product categories by revenue?
+10,Medium,Which state has the highest revenue?
+11,Medium,Which product category has the highest average price?
+12,Medium,What is the total revenue by payment type?
+13,Medium,What is the average review score?
+14,Medium,Which payment type generates the most revenue?
+15,Medium,What are the top 10 states by number of customers?
+16,Medium,What is the monthly revenue for 2018?
+17,Hard,Which product category had the highest revenue among delivered orders?
+18,Hard,Which state has the highest average order value?
+19,Hard,What is the average delivery time for delivered orders?
+20,Hard,Which product category has the highest number of orders?
+21,Hard,Which payment type was used for the highest value orders?
+22,Hard,What was the total revenue from delivered orders in 2018?
+23,Hard,Which state had the highest revenue from delivered orders?
+24,Hard,What are the top 5 product categories by revenue in 2018?
+25,Hard,Which product category has the highest average review score?
