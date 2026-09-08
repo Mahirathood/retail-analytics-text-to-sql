@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.express as px
+from numbers import Number
 
 from src.text_to_sql import (
     generate_sql,
@@ -76,9 +77,7 @@ try:
     average_review_score = get_average_review_score()
     delivery_rate = get_delivery_rate()
 
-
     col1, col2, col3, col4 = st.columns(4)
-
 
     with col1:
         st.metric(
@@ -86,13 +85,11 @@ try:
             f"R$ {total_revenue:,.2f}"
         )
 
-
     with col2:
         st.metric(
             "Total Orders",
             f"{total_orders:,}"
         )
-
 
     with col3:
         st.metric(
@@ -100,16 +97,13 @@ try:
             f"{total_customers:,}"
         )
 
-
     with col4:
         st.metric(
             "Average Order Value",
             f"R$ {average_order_value:,.2f}"
         )
 
-
     col5, col6 = st.columns(2)
-
 
     with col5:
         st.metric(
@@ -117,13 +111,11 @@ try:
             f"{delivery_rate:.2f}%"
         )
 
-
     with col6:
         st.metric(
             "Average Review Score",
             f"{average_review_score:.2f} / 5"
         )
-
 
 except Exception as e:
 
@@ -137,7 +129,6 @@ except Exception as e:
 # -----------------------------------
 
 st.header("🔎 Dashboard Filters")
-
 
 try:
 
@@ -217,6 +208,12 @@ try:
             use_container_width=True
         )
 
+    else:
+
+        st.info(
+            "No revenue data available for the selected filters."
+        )
+
 except Exception as e:
 
     st.warning(
@@ -251,6 +248,12 @@ try:
             use_container_width=True
         )
 
+    else:
+
+        st.info(
+            "No state revenue data available for the selected filters."
+        )
+
 except Exception as e:
 
     st.warning(
@@ -280,6 +283,12 @@ try:
         st.plotly_chart(
             fig,
             use_container_width=True
+        )
+
+    else:
+
+        st.info(
+            "No product category data available."
         )
 
 except Exception as e:
@@ -327,6 +336,12 @@ with col1:
                 use_container_width=True
             )
 
+        else:
+
+            st.info(
+                "No payment data available for the selected filters."
+            )
+
     except Exception as e:
 
         st.warning(
@@ -360,8 +375,350 @@ with col2:
                 use_container_width=True
             )
 
+        else:
+
+            st.info(
+                "No order status data available."
+            )
+
     except Exception as e:
 
         st.warning(
             f"Unable to load order status analysis: {e}"
         )
+
+
+# -----------------------------------
+# Conversation History
+# -----------------------------------
+
+if st.session_state.messages:
+
+    st.header("💬 Conversation History")
+
+    for message in st.session_state.messages:
+
+        if message["role"] == "user":
+
+            st.write(
+                f"👤 **You:** {message['content']}"
+            )
+
+        elif message["role"] == "assistant":
+
+            st.write(
+                f"🤖 **AI:** {message['content']}"
+            )
+
+
+# -----------------------------------
+# Ask a Question
+# -----------------------------------
+
+st.header("🤖 Ask a Question")
+
+examples = [
+    "What is the total revenue?",
+    "Which state has the most customers?",
+    "What are the top 10 product categories by revenue?",
+    "What is the average order value?",
+    "Which payment type is used most often?",
+    "Show monthly revenue for 2018."
+]
+
+
+selected_question = st.selectbox(
+    "Choose an example question:",
+    [""] + examples
+)
+
+
+question = st.text_input(
+    "Or enter your own business question:",
+    placeholder="What would you like to know?"
+)
+
+
+if not question and selected_question:
+
+    question = selected_question
+
+
+ask_button = st.button(
+    "Ask AI"
+)
+
+
+# -----------------------------------
+# Text-to-SQL Pipeline
+# -----------------------------------
+
+if ask_button and question:
+
+    with st.spinner("Analyzing your question..."):
+
+        try:
+
+            # -----------------------------------
+            # Generate SQL
+            # -----------------------------------
+
+            sql = generate_sql(
+                question,
+                st.session_state.messages
+            )
+
+
+            # -----------------------------------
+            # Save User Question
+            # -----------------------------------
+
+            st.session_state.messages.append(
+                {
+                    "role": "user",
+                    "content": question
+                }
+            )
+
+
+            # -----------------------------------
+            # Generated SQL
+            # -----------------------------------
+
+            st.subheader("Generated SQL")
+
+            st.code(
+                sql,
+                language="sql"
+            )
+
+
+            # -----------------------------------
+            # Execute SQL
+            # -----------------------------------
+
+            try:
+
+                result = run_query(sql)
+
+            except Exception as first_error:
+
+                st.warning(
+                    "The generated SQL failed. "
+                    "Attempting to correct the query..."
+                )
+
+                try:
+
+                    corrected_sql = fix_sql(
+                        question,
+                        sql,
+                        str(first_error)
+                    )
+
+
+                    st.subheader("Corrected SQL")
+
+                    st.code(
+                        corrected_sql,
+                        language="sql"
+                    )
+
+
+                    result = run_query(
+                        corrected_sql
+                    )
+
+                except Exception as second_error:
+
+                    st.error(
+                        f"SQL failed after retry: {second_error}"
+                    )
+
+                    st.stop()
+
+
+            # -----------------------------------
+            # Query Result
+            # -----------------------------------
+
+            st.subheader("Query Result")
+
+            st.dataframe(
+                result,
+                use_container_width=True
+            )
+
+
+            # -----------------------------------
+            # Visualization
+            # -----------------------------------
+
+            st.subheader("Visualization")
+
+
+            # -----------------------------------
+            # Empty result
+            # -----------------------------------
+
+            if result.empty:
+
+                st.info(
+                    "The query returned no results."
+                )
+
+
+            # -----------------------------------
+            # Single-value result
+            # -----------------------------------
+
+            elif len(result.columns) == 1 and len(result) == 1:
+
+                column_name = result.columns[0]
+
+                value = result.iloc[0, 0]
+
+
+                if isinstance(value, Number):
+
+                    st.metric(
+                        label=column_name.replace(
+                            "_",
+                            " "
+                        ).title(),
+                        value=f"{value:,.2f}"
+                    )
+
+                else:
+
+                    st.metric(
+                        label=column_name.replace(
+                            "_",
+                            " "
+                        ).title(),
+                        value=str(value)
+                    )
+
+
+            # -----------------------------------
+            # Multi-row result
+            # -----------------------------------
+
+            elif len(result.columns) >= 2 and len(result) > 1:
+
+                x_column = result.columns[0]
+
+
+                # Find numeric columns
+                numeric_columns = result.select_dtypes(
+                    include="number"
+                ).columns.tolist()
+
+
+                # Remove x-axis column
+                y_candidates = [
+                    column
+                    for column in numeric_columns
+                    if column != x_column
+                ]
+
+
+                if y_candidates:
+
+                    y_column = y_candidates[0]
+
+
+                    # -----------------------------------
+                    # Choose chart type
+                    # -----------------------------------
+
+                    if "month" in x_column.lower():
+
+                        fig = px.line(
+                            result,
+                            x=x_column,
+                            y=y_column,
+                            markers=True,
+                            title=(
+                                f"{y_column.replace('_', ' ').title()} "
+                                f"by Month"
+                            )
+                        )
+
+                    else:
+
+                        fig = px.bar(
+                            result,
+                            x=x_column,
+                            y=y_column,
+                            title=(
+                                f"{y_column.replace('_', ' ').title()} "
+                                f"by "
+                                f"{x_column.replace('_', ' ').title()}"
+                            )
+                        )
+
+
+                    st.plotly_chart(
+                        fig,
+                        use_container_width=True
+                    )
+
+
+                else:
+
+                    st.info(
+                        "No suitable numeric column found "
+                        "for visualization."
+                    )
+
+
+            # -----------------------------------
+            # Unsupported result
+            # -----------------------------------
+
+            else:
+
+                st.info(
+                    "The result does not contain enough "
+                    "data to create a visualization."
+                )
+
+
+            # -----------------------------------
+            # Business Explanation
+            # -----------------------------------
+
+            explanation = summarize_result(
+                question,
+                result
+            )
+
+
+            st.subheader(
+                "Business Explanation"
+            )
+
+
+            st.write(
+                explanation
+            )
+
+
+            # -----------------------------------
+            # Save Assistant Response
+            # -----------------------------------
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": explanation
+                }
+            )
+
+
+        except Exception as e:
+
+            st.error(
+                f"Something went wrong: {e}"
+            )
